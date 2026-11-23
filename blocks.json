@@ -1,0 +1,258 @@
+{
+ "name": "egov-eservice",
+ "goal": "สร้างเว็บ e-Service กลาง เทศบาลนครสุขใจ ตามชุดโจทย์ใน /workspace/egov-brief (อ่าน README.md ก่อน) ต้องทำตาม REQUIREMENTS.md CONTRACT.md TEST-DATA.md DECISIONS.md ครบทุกข้อ (route · data-testid · ข้อความ error ตรงตัวอักษร · API · test hook) รันด้วย docker compose up คำสั่งเดียว รองรับ TEST_MODE=1 และ BUG_MODE=B01..B12 ตาม BUGS.md (ไม่ตั้ง = เว็บถูกต้อง 100%) และมีชุด Playwright ครบ 51 TC ใน TEST-PLAN.md · stack: Node 20 + Express + SQLite (better-sqlite3) + หน้า HTML render ฝั่งเซิร์ฟเวอร์ · เวลาในกฎธุรกิจอ่านจากนาฬิกาทดสอบ (Asia/Bangkok) ห้ามเรียกเวลาเครื่องตรง ๆ · ห้ามใช้ชื่อ/ตราหน่วยงานจริง ห้ามเชื่อมระบบจริง · ข้อมูลทดสอบเป็นข้อมูลสมมติเท่านั้น",
+ "blocks": [
+  {
+   "id": "B01",
+   "title": "โครงโปรเจกต์ + compose + DB + test hook",
+   "size": "M",
+   "depends_on": [],
+   "skill": "yolo",
+   "difficulty": 3,
+   "output": "docker-compose.yml",
+   "reads": [
+    "README.md",
+    "CONTRACT.md §0 §1 §6.6 §8",
+    "DECISIONS.md §0 §14 §15",
+    "REQUIREMENTS.md §3 NFR §4 สถานะ"
+   ],
+   "done": "อ่าน: README · CONTRACT §0 §1 §6.6 §8 · DECISIONS §0 §14 §15 · REQUIREMENTS §3 §4 | docker compose up เปิดเว็บได้ · มี schema ครบทุกตาราง (เข้ารหัสฟิลด์ PII ตาม NFR) · server/lib/clock.js (นาฬิกาทดสอบ +07:00) · server/lib/bugmode.js (isBug('B03')) · TEST_MODE=1: POST /api/test/reset (ล้าง session/cookie/ไฟล์ แล้วเรียก seed) และ PUT /api/test/clock ใช้ได้ · ไม่ตั้ง TEST_MODE → /api/test/* ตอบ 404 · GET health ตาม CONTRACT §6.6 · รับ body ≥ 6 MB"
+  },
+  {
+   "id": "B02",
+   "title": "ข้อมูล seed ตาม TEST-DATA",
+   "size": "M",
+   "depends_on": [
+    "B01"
+   ],
+   "skill": "yolo",
+   "difficulty": 3,
+   "output": "server/seed.js",
+   "reads": [
+    "TEST-DATA.md ทั้งไฟล์",
+    "DECISIONS.md §17 §3",
+    "CONTRACT.md §3"
+   ],
+   "done": "อ่าน: TEST-DATA ทั้งไฟล์ · DECISIONS §3 §17 · CONTRACT §3 | หลัง reset มีบัญชี บริการ วันหยุด คำขอ 30 ใบ + ร่าง 2 ใบ เอกสาร 1 ใบ การชำระ/ใบเสร็จ ตรง TEST-DATA ทุกค่า · นาฬิกา = 2026-12-01T09:00:00+07:00 · มี scripts/check-seed.js ที่นับแถวตรงตาราง 4/9 ของ TEST-DATA"
+  },
+  {
+   "id": "B03",
+   "title": "ล็อกอิน ThaiD/SSO + ลงทะเบียน + RBAC",
+   "size": "M",
+   "depends_on": [
+    "B01"
+   ],
+   "skill": "yolo",
+   "difficulty": 3,
+   "output": "server/routes/auth.js",
+   "reads": [
+    "REQUIREMENTS.md FR-01..03 BR-01 BR-02 BR-03 BR-21",
+    "CONTRACT.md §1 §2.1 §2.2 §2.3 §5 §6.1",
+    "DECISIONS.md §1 §2"
+   ],
+   "done": "อ่าน: REQUIREMENTS FR-01..03 BR-01..03 BR-21 · CONTRACT §1 §2.1–2.3 §5 §6.1 · DECISIONS §1 §2 | checksum เลขบัตร 13 หลัก · OTP ผิด 3 ครั้งล็อก 15:00 นาที (423) · ลงทะเบียน (เบอร์ 10 หลักขึ้นต้น 0, ยินยอม PDPA) · SSO เจ้าหน้าที่ · middleware RBAC 6 บทบาท (หน้า 403 forbidden-msg / API 401·403) · layout + nav ตามบทบาท · audit STAFF_LOGIN · testid และข้อความตรง CONTRACT"
+  },
+  {
+   "id": "B04",
+   "title": "กฎตัวเลข: ค่าธรรมเนียม + SLA วันทำการ + ระดับเตือน",
+   "size": "M",
+   "depends_on": [
+    "B01"
+   ],
+   "skill": "yolo",
+   "difficulty": 4,
+   "output": "server/lib/rules.js",
+   "reads": [
+    "REQUIREMENTS.md BR-04 BR-05 BR-12 BR-13 BR-14",
+    "DECISIONS.md §0 §3 §8 §18",
+    "TEST-PLAN.md TC-FEE-01 TC-SLA-01..03 (เฉพาะตารางค่าที่คาด)",
+    "BUGS.md B01 B03 B04"
+   ],
+   "done": "อ่าน: REQUIREMENTS BR-04 BR-05 BR-12..14 · DECISIONS §0 §3 §8 §18 · TEST-PLAN TC-FEE-01 TC-SLA-01..03 · BUGS B01 B03 B04 | ฟังก์ชันบริสุทธิ์ calcFee/calcDueAt/extendDueForNeedFix/slaLevel อ่านวันหยุดจาก DB · unit test ครอบค่าขอบทุกแถวใน BR (101→฿1,010 · 16:29:59 vs 16:30:00 → 4 vs 8 ธ.ค. · 16:30:01 เกินกำหนด) ผ่านหมด · BUG_MODE B01 B03 B04 ฝังตาม BUGS.md · unit test ค่าขอบทุกแถวผ่าน (ไม่มีบัญชี Codex จึงตรวจด้วย test แทน review)"
+  },
+  {
+   "id": "B05",
+   "title": "ประชาชน: ยื่นคำขอ ร่าง แนบไฟล์ ยกเลิก",
+   "size": "M",
+   "depends_on": [
+    "B03",
+    "B04"
+   ],
+   "skill": "yolo",
+   "difficulty": 3,
+   "output": "server/routes/citizen.js",
+   "reads": [
+    "REQUIREMENTS.md FR-04..07 FR-09 BR-06 BR-07 BR-08 BR-22",
+    "CONTRACT.md §2.4 §2.5 §2.6 §4.3 §5 §6.2",
+    "DECISIONS.md §4 §5",
+    "BUGS.md B02 B06"
+   ],
+   "done": "อ่าน: REQUIREMENTS FR-04..07 FR-09 BR-06..08 BR-22 · CONTRACT §2.4–2.6 §4.3 §5 §6.2 · DECISIONS §4 §5 · BUGS B02 B06 | ฟอร์ม 3 บริการ ค่าธรรมเนียมจาก rules.js · ตรวจชนิดไฟล์จาก magic bytes · 5,242,880 ✓ / 5,242,881 → 400 FILE_TOO_LARGE · ไฟล์ที่ 6 ✗ · เอกสารบังคับ + แบบแปลน PDF เท่านั้น · ร่าง/ลบร่าง · ยกเลิกเฉพาะ SUBMITTED ไม่มีผู้รับ · คำขอคนอื่น 404 ไม่พบคำขอ · BUG_MODE B02 B06"
+  },
+  {
+   "id": "B06",
+   "title": "ชำระเงิน QR จำลอง + เลขคำขอ + ใบเสร็จ",
+   "size": "M",
+   "depends_on": [
+    "B05"
+   ],
+   "skill": "yolo",
+   "difficulty": 4,
+   "output": "server/routes/payment.js",
+   "reads": [
+    "REQUIREMENTS.md FR-08 BR-09 BR-10 BR-11",
+    "CONTRACT.md §2.5 (ขั้นชำระ) §5 §6.2 §8",
+    "DECISIONS.md §6 §7",
+    "BUGS.md B05"
+   ],
+   "done": "อ่าน: REQUIREMENTS FR-08 BR-09..11 · CONTRACT §2.5 §5 §6.2 §8 · DECISIONS §6 §7 · BUGS B05 | QR อายุ < 15:00 (15:00 → 410) · ยอดต้องตรง (422) ยอดล็อกตอนเข้า PENDING_PAYMENT · POST /api/test/payments/<ref>/pay idempotent · เลข EG-<พ.ศ.>-<6 หลัก> นับใหม่ทุกปี ไม่ซ้ำเมื่อจ่ายพร้อมกัน 6 รายการ (transaction) · ใบเสร็จ RC- · ชำระแล้วคำนวณกำหนดเสร็จด้วย rules.js · BUG_MODE B05"
+  },
+  {
+   "id": "B07",
+   "title": "เจ้าหน้าที่/หัวหน้า: คิว รับเรื่อง ตีกลับ อนุมัติ + PDPA",
+   "size": "L",
+   "depends_on": [
+    "B03",
+    "B04"
+   ],
+   "skill": "yolo",
+   "difficulty": 4,
+   "output": "server/routes/officer.js",
+   "reads": [
+    "REQUIREMENTS.md FR ฝั่งเจ้าหน้าที่ BR-16..21 BR-24 BR-29 §4 แผนภาพสถานะ",
+    "CONTRACT.md §2.6 §2.7 §2.8 §4.1 §5 §6.3 §6.7",
+    "DECISIONS.md §5 §9 §10 §11 §18",
+    "BUGS.md B07 B08 B09 B11 B12"
+   ],
+   "done": "อ่าน: REQUIREMENTS BR-16..21 BR-24 BR-29 §4 · CONTRACT §2.6–2.8 §4.1 §5 §6.3 §6.7 · DECISIONS §5 §9 §10 §11 §18 · BUGS B07 B08 B09 B11 B12 | คิวเรียงกำหนดเสร็จ→เลขคำขอ · รับเรื่องพร้อมกันได้ 1 คน (409) · งานในมือ ≤ 10 · ตีกลับ ≤ 2 เหตุผล ≥ 10 ตัว · หยุด SLA ระหว่าง NEED_FIX · ยกเลิกอัตโนมัติ 168 ชม. · routing SV-01/02/03 + ตรวจสิทธิ์ที่ API · เลขบัตรปิดบัง + unmask มีเหตุผล + audit · JSON ไม่มี \\d{13} · สิทธิ์ไฟล์แนบ · BUG_MODE B07 B08 B09 B11 B12"
+  },
+  {
+   "id": "B08",
+   "title": "แจ้งเตือน SLA ในกระดิ่ง",
+   "size": "S",
+   "depends_on": [
+    "B07"
+   ],
+   "skill": "yolo",
+   "difficulty": 3,
+   "output": "server/lib/notify.js",
+   "reads": [
+    "REQUIREMENTS.md BR-14 BR-15",
+    "CONTRACT.md §0 ข้อ 7 §2.1 §2.12",
+    "DECISIONS.md §8",
+    "TEST-DATA.md §8"
+   ],
+   "done": "อ่าน: REQUIREMENTS BR-14 BR-15 · CONTRACT §0(7) §2.1 §2.12 · DECISIONS §8 · TEST-DATA §8 | ประเมินทุก request (ยกเว้น /api/test/*) · ผู้รับตามผู้ถือ/แผนก/head/ผู้ออกเอกสาร · 1 ครั้งต่อระดับต่อคำขอต่อคน · เกินกำหนดแจ้ง head เพิ่มไม่ซ้ำ · bell-count และหน้า /notifications ตรง TEST-DATA §8"
+  },
+  {
+   "id": "B09",
+   "title": "เอกสารดิจิทัล HMAC + /verify",
+   "size": "M",
+   "depends_on": [
+    "B07"
+   ],
+   "skill": "yolo",
+   "difficulty": 3,
+   "output": "server/routes/docs.js",
+   "reads": [
+    "REQUIREMENTS.md BR-23",
+    "CONTRACT.md §1 /verify §2.13 §5 §6.4",
+    "DECISIONS.md §10",
+    "TEST-DATA.md §5"
+   ],
+   "done": "อ่าน: REQUIREMENTS BR-23 · CONTRACT §1 §2.13 §5 §6.4 · DECISIONS §10 · TEST-DATA §5 | ออกเอกสารหลัง APPROVED พร้อมลายเซ็น HMAC-SHA256 คีย์ทดสอบ · อายุ SV-01 90 วัน / SV-02-03 1 ปี (กรณี 29 ก.พ.) · /verify ไม่ต้องล็อกอิน: ถูกต้อง/หมดอายุ/ลายเซ็นไม่ถูกต้อง (200) · ไม่พบเอกสาร (404) · ชื่อผู้ยื่นปิดบังตาม BR-23 · audit ISSUE"
+  },
+  {
+   "id": "B10",
+   "title": "Dashboard + ส่งออก Excel/PDF",
+   "size": "M",
+   "depends_on": [
+    "B02",
+    "B04"
+   ],
+   "skill": "yolo",
+   "difficulty": 4,
+   "output": "server/routes/dashboard.js",
+   "reads": [
+    "REQUIREMENTS.md FR Dashboard BR-24 BR-25 BR-26",
+    "CONTRACT.md §2.9 §6.4 §7",
+    "DECISIONS.md §12 §18",
+    "TEST-DATA.md §7",
+    "BUGS.md B10"
+   ],
+   "done": "อ่าน: REQUIREMENTS BR-24..26 · CONTRACT §2.9 §6.4 §7 · DECISIONS §12 §18 · TEST-DATA §7 · BUGS B10 | ตัวเลขเริ่มต้นตรง TEST-DATA §7 (คงค้าง 21 · เกินกำหนด 1 · ปิดงาน 0 → –) · พ.ย. 85.7% · ปี 2569 87.5% (รวมยอดก่อนคิด %) · ทัน = closed_at ≤ กำหนด รวม 16:30:00 · ส่งออก Excel/PDF เท่าจอ + audit EXPORT · ไม่มีชื่อ/เลขบัตร/เบอร์ · BUG_MODE B10 · unit test ค่าขอบทุกแถวผ่าน (ไม่มีบัญชี Codex จึงตรวจด้วย test แทน review)"
+  },
+  {
+   "id": "B11",
+   "title": "Audit Trail + หน้าผู้ดูแลระบบ",
+   "size": "M",
+   "depends_on": [
+    "B03"
+   ],
+   "skill": "yolo",
+   "difficulty": 2,
+   "output": "server/routes/audit-admin.js",
+   "reads": [
+    "REQUIREMENTS.md BR-27 BR-28",
+    "CONTRACT.md §2.10 §2.11 §6.4 §6.5 §6.8",
+    "DECISIONS.md §13 §3"
+   ],
+   "done": "อ่าน: REQUIREMENTS BR-27 BR-28 · CONTRACT §2.10 §2.11 §6.4 §6.5 §6.8 · DECISIONS §3 §13 | /audit กรองผู้ทำ/เหตุการณ์/ช่วงวันที่ตามเวลาไทย + CSV · PUT/PATCH/DELETE → 405 · /admin/services (ค่าธรรมเนียม 0–100,000 · SLA 1–60) /admin/holidays (ซ้ำ 409) /admin/users (เปลี่ยนบทบาทตัวเอง 409) · audit ADMIN_CHANGE · helper audit.log() ให้บล็อกอื่นเรียก"
+  },
+  {
+   "id": "B12",
+   "title": "Playwright ชุด A: AUTH–NOTI (22 TC)",
+   "size": "L",
+   "depends_on": [],
+   "skill": "yolo",
+   "difficulty": 3,
+   "output": "tests/e2e/part-a.spec.ts",
+   "reads": [
+    "TEST-PLAN.md §0 §2–§9",
+    "CONTRACT.md",
+    "TEST-DATA.md"
+   ],
+   "done": "อ่าน: TEST-PLAN §0 §2–§9 · CONTRACT · TEST-DATA เท่านั้น ห้ามอ่านโค้ดเว็บ | เขียน tests/package.json + tests/playwright.config.ts (baseURL จาก env) + tests/e2e/helpers-a.ts · test ชื่อขึ้นต้นด้วยรหัส TC ครบ 22 ข้อ (AUTH 4 FEE 1 SUBMIT 3 UPLOAD 2 PAY 4 QUEUE 3 SLA 3 NOTI 2) · ทุก TC เริ่ม reset + ล็อกอินใหม่ · ค่าคาดหวังตรงการ์ดตรงตัว · npx playwright test --list แสดง 22 test"
+  },
+  {
+   "id": "B13",
+   "title": "Playwright ชุด B: WORKFLOW–NFR (29 TC)",
+   "size": "L",
+   "depends_on": [],
+   "skill": "yolo",
+   "difficulty": 3,
+   "output": "tests/e2e/part-b.spec.ts",
+   "reads": [
+    "TEST-PLAN.md §0 §10–§16 §18",
+    "CONTRACT.md",
+    "TEST-DATA.md"
+   ],
+   "done": "อ่าน: TEST-PLAN §0 §10–§16 §18 · CONTRACT · TEST-DATA เท่านั้น ห้ามอ่านโค้ดเว็บ | เขียน tests/e2e/part-b.spec.ts + tests/e2e/helpers-b.ts (ไม่แตะ config ของชุด A) · ครบ 29 ข้อ (WORKFLOW 6 DOC 3 PDPA 3 DASH 4 AUDIT 3 RBAC 6 NFR 4) · TC ที่จับบั๊กสิทธิ์ต้องยิง API ตรง ไม่ตรวจแค่ปุ่ม · axe สำหรับ WCAG · ค่าคาดหวังตรงการ์ดตรงตัว"
+  },
+  {
+   "id": "B14",
+   "title": "รวมระบบ + Playwright เต็ม + BUG_MODE ×12",
+   "size": "L",
+   "depends_on": [
+    "B06",
+    "B08",
+    "B09",
+    "B10",
+    "B11",
+    "B12",
+    "B13"
+   ],
+   "skill": "yolo",
+   "difficulty": 4,
+   "exclusive": true,
+   "output": "TEST-REPORT.md",
+   "reads": [
+    "README.md",
+    "TEST-PLAN.md",
+    "BUGS.md",
+    "CONTRACT.md"
+   ],
+   "done": "อ่าน: README · TEST-PLAN · BUGS · CONTRACT | docker compose up คำสั่งเดียว · TEST_MODE=1 ไม่ตั้ง BUG_MODE → Playwright 51/51 ผ่าน · BUG_MODE=B01..B12 ทีละตัว → TC ที่ BUGS.md ระบุล้ม ที่เหลือผ่าน · TEST-REPORT.md มีผล 51 TC + ตาราง triage 12 บั๊กตามรูปแบบ BUGS.md · ห้ามแก้ค่าคาดหวังใน test ให้ตรงจอ"
+  }
+ ]
+}

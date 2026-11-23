@@ -1,0 +1,19 @@
+/* ฐาน CSS กลาง: responsive 375/768/1280 ไม่มี scroll แนวนอน · คอนทราสต์ผ่าน WCAG AA */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; font-family: system-ui, "Noto Sans Thai", "Sarabun", sans-serif; font-size: 16px; line-height: 1.5; color: #1a1a1a; background: #f6f7f9; overflow-wrap: anywhere; }
+main { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+img, svg, video, canvas { max-width: 100%; height: auto; }
+table { width: 100%; border-collapse: collapse; }
+.table-wrap { width: 100%; overflow-x: auto; }
+th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #d0d4da; vertical-align: top; }
+a { color: #0b4f9c; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #0b4f9c; outline-offset: 2px; }
+button, .btn { font: inherit; padding: .5rem 1rem; border: 1px solid #0b4f9c; border-radius: 6px; background: #0b4f9c; color: #fff; cursor: pointer; }
+button[disabled] { background: #6b7280; border-color: #6b7280; cursor: not-allowed; }
+button.secondary { background: #fff; color: #0b4f9c; }
+input, select, textarea { font: inherit; padding: .4rem .5rem; border: 1px solid #6b7280; border-radius: 4px; max-width: 100%; }
+label { display: block; font-weight: 600; margin: .5rem 0 .25rem; }
+[role="alert"], .error { color: #a40e0e; }
+.success { color: #11613a; }
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
